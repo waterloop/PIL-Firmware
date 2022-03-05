@@ -41,6 +41,8 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+extern CAN_HandleTypeDef hcan;
+extern TIM_HandleTypeDef htim3;
 
 /* USER CODE END EC */
 

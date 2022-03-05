@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "state_machine.h"
 
 /* USER CODE END Includes */
 
@@ -93,6 +94,8 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
+  StateMachine currentState = standbyState;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -100,6 +103,9 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+
+    currentState = (*currentState)();
+    // HAL_Delay(200);
 
     /* USER CODE BEGIN 3 */
   }
