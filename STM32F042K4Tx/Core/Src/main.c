@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "state_machine.h"
+#include "state_machine_utils.h"
 
 /* USER CODE END Includes */
 
@@ -94,7 +94,9 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
-  StateMachine currentState = standbyState;
+  start_timers();
+  init_can(); 
+  StateID stateEvent = RESTING;
 
   /* USER CODE END 2 */
 
@@ -104,8 +106,86 @@ int main(void)
   {
     /* USER CODE END WHILE */
 
-    currentState = (*currentState)();
-    // HAL_Delay(200);
+    // if queue isn't empty, check for a message
+    if(!Queue_empty(&RX_QUEUE)) {
+      CANFrame rxFrame = CANBus_get_frame();
+
+      if(rxFrame.id == 0) {
+        stateEvent = CANFrame_get_field(&rxFrame, STATE_ID); 
+      }
+
+      // wait for MC and BMS to ack if not failure state
+      if(stateEvent != SYSTEM_FAILURE) {
+        int BMS_ACK = 0;
+        int MC_ACK = 0;
+
+        // busy wait for acknowledgements from MC and BMS
+        while(!MC_ACK && !BMS_ACK) {
+          // if a msg is received
+          if(!Queue_empty(&RX_QUEUE)) {
+            CANFrame ackFrame = CANBus_get_frame(); 
+
+            // check that BMS_ACK has been received
+            if( !BMS_ACK && ackFrame.id == 0xB) {
+              int ackEvent = CANFrame_get_field(&ackFrame, 
+                              BMS_STATE_CHANGE_ACK_ID);
+              unsigned int ack = CANFrame_get_field(&ackFrame, 
+                              BMS_STATE_CHANGE_ACK);
+              if(ackEvent == stateEvent && ack == 0) {
+                BMS_ACK = 1;
+              }
+            } 
+            
+            // check that MC_ACK has been received
+            if( !MC_ACK && ackFrame.id == 0x15) {
+              int ackEvent = CANFrame_get_field(&ackFrame, 
+                                MOTOR_CONTROLLER_STATE_CHANGE_ACK_ID);
+              unsigned int ack = CANFrame_get_field(&ackFrame, 
+                                MOTOR_CONTROLLER_STATE_CHANGE_ACK);
+              if(ackEvent == stateEvent && ack == 0) {
+                MC_ACK = 1;
+              } 
+            }
+
+            // what about receiving a NACK?
+              // wait until receiving an ACK
+          }
+        }
+      }
+
+      // State machine
+      switch (stateEvent)
+      {
+      case RESTING:
+      case MANUAL_OPERATION_WAITING: 
+        // blinking yellow
+        setLEDBlink(50.0, 50.0, 0.0);
+        // set PWM to blinking
+      break;
+      case BRAKING: 
+      case EMERGENCY_BRAKE:
+        // blinking green
+        setLEDBlink(0.0, 50.0, 0.0);
+        // set PWM to blinking 
+      break;
+      case ACCELERATING:
+      case AT_SPEED:
+      case DECELERATING:
+        // solid green 
+        setLEDColour(0.0, 50.0, 0.0);
+        HAL_Delay(200);
+      break;
+      case SYSTEM_FAILURE: 
+        // solid red
+        setLEDColour(50.0, 0.0, 0.0);
+        HAL_Delay(200);
+      break;
+      default:
+      break;
+      }
+    }
+
+    // what about battery health warnings? 
 
     /* USER CODE BEGIN 3 */
   }
