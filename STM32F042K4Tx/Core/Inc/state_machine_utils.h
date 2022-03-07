@@ -1,5 +1,4 @@
-#ifndef __STATE_MACHINE_UTILS_H
-#define __STATE_MACHINE_UTILS_H
+#pragma once
 
 // typedef enum {
 //     standbyEvent,
@@ -24,5 +23,3 @@ void start_timers();
 void init_can();
 void setLEDColour(float R, float G, float B);
 void setLEDBlink(float R, float G, float B);
-
-#endif /* __STATE_MACHINE_UTILS_H */

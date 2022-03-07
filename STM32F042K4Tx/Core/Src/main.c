@@ -114,6 +114,11 @@ int main(void)
         stateEvent = CANFrame_get_field(&rxFrame, STATE_ID); 
       }
 
+      if(stateEvent == ARMED) {
+        // set LED to white if not acked yet by BMS 
+        setLEDColour(50.0, 50.0, 50.0);
+      }
+
       // wait for MC and BMS to ack if not failure state
       if(stateEvent != SYSTEM_FAILURE) {
         int BMS_ACK = 0;
@@ -157,30 +162,37 @@ int main(void)
       switch (stateEvent)
       {
       case RESTING:
+        // "sleeping", blue
+        setLEDColour(0.0, 0.0, 50.0);
+      break; 
+      case LV_READY:
+      case ARMED: 
       case MANUAL_OPERATION_WAITING: 
-        // blinking yellow
-        setLEDBlink(50.0, 50.0, 0.0);
-        // set PWM to blinking
+        // "idle", green
+        setLEDColour(0.0, 50.0, 0.0);
       break;
       case BRAKING: 
       case EMERGENCY_BRAKE:
-        // blinking green
-        setLEDBlink(0.0, 50.0, 0.0);
+      case DECELERATING:
+        // "stop" blinking blue
+        setLEDBlink(0.0, 0.0, 50.0);
         // set PWM to blinking 
       break;
+      case AUTO_PILOT:
       case ACCELERATING:
       case AT_SPEED:
-      case DECELERATING:
-        // solid green 
-        setLEDColour(0.0, 50.0, 0.0);
-        HAL_Delay(200);
+        // "run", purple/blueish
+        // note: this colour was taken from BMS_SW_G5 state_machine.cpp:272
+        setLEDColour(41.57, 5.1, 67.84);
       break;
       case SYSTEM_FAILURE: 
-        // solid red
-        setLEDColour(50.0, 0.0, 0.0);
-        HAL_Delay(200);
+        // "severe danger fault", flashing red
+        setLEDBlink(50.0, 0.0, 0.0);
+        // set PWM to blinkning
       break;
       default:
+        // "initialize/normal danger fault", solid red?
+        setLEDColour(50.0, 0.0, 0.0);
       break;
       }
     }
