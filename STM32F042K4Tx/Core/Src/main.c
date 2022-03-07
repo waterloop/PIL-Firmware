@@ -44,6 +44,8 @@ CAN_HandleTypeDef hcan;
 
 TIM_HandleTypeDef htim3;
 
+TIM_HandleTypeDef htim14;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -53,6 +55,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_CAN_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM14_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -92,11 +95,12 @@ int main(void)
   MX_GPIO_Init();
   MX_CAN_Init();
   MX_TIM3_Init();
+  MX_TIM14_Init();
   /* USER CODE BEGIN 2 */
 
   start_timers();
   init_can(); 
-  StateID stateEvent = RESTING;
+  StateID state = RESTING;
 
   /* USER CODE END 2 */
 
@@ -106,98 +110,7 @@ int main(void)
   {
     /* USER CODE END WHILE */
 
-    // if queue isn't empty, check for a message
-    if(!Queue_empty(&RX_QUEUE)) {
-      CANFrame rxFrame = CANBus_get_frame();
-
-      if(rxFrame.id == 0) {
-        stateEvent = CANFrame_get_field(&rxFrame, STATE_ID); 
-      }
-
-      if(stateEvent == ARMED) {
-        // set LED to white if not acked yet by BMS 
-        setLEDColour(50.0, 50.0, 50.0);
-      }
-
-      // wait for MC and BMS to ack if not failure state
-      if(stateEvent != SYSTEM_FAILURE) {
-        int BMS_ACK = 0;
-        int MC_ACK = 0;
-
-        // busy wait for acknowledgements from MC and BMS
-        while(!MC_ACK && !BMS_ACK) {
-          // if a msg is received
-          if(!Queue_empty(&RX_QUEUE)) {
-            CANFrame ackFrame = CANBus_get_frame(); 
-
-            // check that BMS_ACK has been received
-            if( !BMS_ACK && ackFrame.id == 0xB) {
-              int ackEvent = CANFrame_get_field(&ackFrame, 
-                              BMS_STATE_CHANGE_ACK_ID);
-              unsigned int ack = CANFrame_get_field(&ackFrame, 
-                              BMS_STATE_CHANGE_ACK);
-              if(ackEvent == stateEvent && ack == 0) {
-                BMS_ACK = 1;
-              }
-            } 
-            
-            // check that MC_ACK has been received
-            if( !MC_ACK && ackFrame.id == 0x15) {
-              int ackEvent = CANFrame_get_field(&ackFrame, 
-                                MOTOR_CONTROLLER_STATE_CHANGE_ACK_ID);
-              unsigned int ack = CANFrame_get_field(&ackFrame, 
-                                MOTOR_CONTROLLER_STATE_CHANGE_ACK);
-              if(ackEvent == stateEvent && ack == 0) {
-                MC_ACK = 1;
-              } 
-            }
-
-            // what about receiving a NACK?
-              // wait until receiving an ACK
-          }
-        }
-      }
-
-      // State machine
-      switch (stateEvent)
-      {
-      case RESTING:
-        // "sleeping", blue
-        setLEDColour(0.0, 0.0, 50.0);
-      break; 
-      case LV_READY:
-      case ARMED: 
-      case MANUAL_OPERATION_WAITING: 
-        // "idle", green
-        setLEDColour(0.0, 50.0, 0.0);
-      break;
-      case BRAKING: 
-      case EMERGENCY_BRAKE:
-      case DECELERATING:
-        // "stop" blinking blue
-        setLEDBlink(0.0, 0.0, 50.0);
-        // set PWM to blinking 
-      break;
-      case AUTO_PILOT:
-      case ACCELERATING:
-      case AT_SPEED:
-        // "run", purple/blueish
-        // note: this colour was taken from BMS_SW_G5 state_machine.cpp:272
-        setLEDColour(41.57, 5.1, 67.84);
-      break;
-      case SYSTEM_FAILURE: 
-        // "severe danger fault", flashing red
-        setLEDBlink(50.0, 0.0, 0.0);
-        // set PWM to blinkning
-      break;
-      default:
-        // "initialize/normal danger fault", solid red?
-        setLEDColour(50.0, 0.0, 0.0);
-      break;
-      }
-    }
-
-    // what about battery health warnings? 
+    state = stateMachine(state);
 
     /* USER CODE BEGIN 3 */
   }
@@ -335,6 +248,37 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM14 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM14_Init(void)
+{
+
+  /* USER CODE BEGIN TIM14_Init 0 */
+
+  /* USER CODE END TIM14_Init 0 */
+
+  /* USER CODE BEGIN TIM14_Init 1 */
+
+  /* USER CODE END TIM14_Init 1 */
+  htim14.Instance = TIM14;
+  htim14.Init.Prescaler = 99; //0;
+  htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim14.Init.Period = 20999; //65535;
+  htim14.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim14.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim14) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM14_Init 2 */
+
+  /* USER CODE END TIM14_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -361,6 +305,29 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+  /* 
+   * tim14 should call interrupt every 200 ms
+   * freq = clock freq / (prescalar + 1) * (counter period + 1) * (repetition counter + 1)
+   *      = 42 MHz/(199 + 1)(41999+1)(1)
+   *      = 42 MHz/(200)(42000)
+   *      = 5 Hz 
+   * period = 1/5 s = 200 ms
+   */ 
+  if(blink) {
+    if(ledON) {
+      setLEDColour(0.0, 0.0, 0.0);
+    } else {
+      setLEDColour(red, green, blue);
+    }
+
+    ledON = ledON ? 0 : 1;
+
+  } else { // non-flashing colour
+    setLEDColour(red, green, blue);
+  }
+}
 
 /* USER CODE END 4 */
 

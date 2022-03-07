@@ -18,8 +18,18 @@ typedef enum {
     BLUE = 2
 } LED_COLOR;
 
+// global colour variables (used by tim14 interrupt)
+extern float red;
+extern float green;
+extern float blue; 
+
+// global blink variables
+extern int blink;
+extern int ledON;
+
 void set_led_intensity(uint8_t color, float intensity); 
-void start_timers(); 
-void init_can();
+void start_timers(void); 
+void init_can(void);
 void setLEDColour(float R, float G, float B);
-void setLEDBlink(float R, float G, float B);
+
+StateID stateMachine(StateID stateEvent);

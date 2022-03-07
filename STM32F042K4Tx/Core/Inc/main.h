@@ -43,6 +43,7 @@ extern "C" {
 /* USER CODE BEGIN EC */
 extern CAN_HandleTypeDef hcan;
 extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim14;
 
 /* USER CODE END EC */
 
