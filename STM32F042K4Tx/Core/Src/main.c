@@ -98,9 +98,12 @@ int main(void)
   MX_TIM14_Init();
   /* USER CODE BEGIN 2 */
 
-  start_timers();
-  init_can(); 
-  StateID state = RESTING;
+  // start_timers();
+  // init_can(); 
+  // StateID state = RESTING;
+
+  // Call main PIL routine
+  return pilMain();
 
   /* USER CODE END 2 */
 
@@ -110,7 +113,7 @@ int main(void)
   {
     /* USER CODE END WHILE */
 
-    state = stateMachine(state);
+    //state = stateMachine(state);
 
     /* USER CODE BEGIN 3 */
   }
@@ -305,29 +308,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-  /* 
-   * tim14 should call interrupt every 200 ms
-   * freq = clock freq / (prescalar + 1) * (counter period + 1) * (repetition counter + 1)
-   *      = 42 MHz/(199 + 1)(41999+1)(1)
-   *      = 42 MHz/(200)(42000)
-   *      = 5 Hz 
-   * period = 1/5 s = 200 ms
-   */ 
-  if(blink) {
-    if(ledON) {
-      setLEDColour(0.0, 0.0, 0.0);
-    } else {
-      setLEDColour(red, green, blue);
-    }
-
-    ledON = ledON ? 0 : 1;
-
-  } else { // non-flashing colour
-    setLEDColour(red, green, blue);
-  }
-}
 
 /* USER CODE END 4 */
 

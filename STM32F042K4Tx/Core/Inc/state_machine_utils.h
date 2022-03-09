@@ -27,9 +27,11 @@ extern float blue;
 extern int blink;
 extern int ledON;
 
-void set_led_intensity(uint8_t color, float intensity); 
+void set_led_intensity(uint8_t colour, float intensity); 
 void start_timers(void); 
 void init_can(void);
 void setLEDColour(float R, float G, float B);
+void waitForAck(StateID stateEvent);
 
 StateID stateMachine(StateID stateEvent);
+int pilMain(); 
