@@ -43,7 +43,6 @@
 CAN_HandleTypeDef hcan;
 
 TIM_HandleTypeDef htim3;
-
 TIM_HandleTypeDef htim14;
 
 /* USER CODE BEGIN PV */
@@ -112,8 +111,6 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
-    //state = stateMachine(state);
 
     /* USER CODE BEGIN 3 */
   }
