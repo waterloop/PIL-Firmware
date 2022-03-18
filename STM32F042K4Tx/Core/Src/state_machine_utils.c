@@ -69,7 +69,7 @@ void start_timers() {
  *
  */
 void init_can() {
-    if (CANBus_init(&hcan) != HAL_OK) { Error_Handler(); }
+    if (CANBus_init(&hcan, &htim16) != HAL_OK) { Error_Handler(); }
     // subscribe CANBus to receive State Change Reqs and BMS + MC acks
     if (CANBus_subscribe(STATE_CHANGE_REQ) != HAL_OK) { Error_Handler(); }
     if (CANBus_subscribe(BMS_STATE_CHANGE_ACK_NACK) != HAL_OK) { Error_Handler(); };
@@ -244,6 +244,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
    *      = 5 Hz 
    * period = 1/5 s = 200 ms
    */ 
+
+  WLoopCAN_timer_isr(htim);
+
   if(blink) {
     if(ledON) {
       setLEDColour(0.0, 0.0, 0.0);
