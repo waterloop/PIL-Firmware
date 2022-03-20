@@ -23,7 +23,7 @@ DEVICE_DIRNAME = STM32F042K4Tx
 # debug build?
 DEBUG = 1
 # optimization
-OPT = -Og
+OPT = -Os
 
 
 #######################################
