@@ -20,12 +20,15 @@ uint8_t ledON;
 void set_led_intensity(uint8_t colour, float intensity) {
     uint32_t ccr_val = (uint32_t)( ((100 - intensity)*ARR_VAL)/100 );
     switch (colour) {
-        case 1:
-            htim3.Instance->CCR1 = ccr_val;
-        case 2:
-            htim3.Instance->CCR2 = ccr_val;
-        case 3:
-            htim3.Instance->CCR3 = ccr_val;
+      case 1:
+        htim3.Instance->CCR1 = ccr_val;
+        break;
+      case 2:
+        htim3.Instance->CCR2 = ccr_val;
+        break;
+      case 3:
+        htim3.Instance->CCR3 = ccr_val;
+        break;
     }
 }
 
