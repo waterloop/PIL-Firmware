@@ -24,13 +24,17 @@ extern float green;
 extern float blue; 
 
 // global blink variables
-extern int blink;
-extern int ledON;
+extern uint8_t blink;
+extern uint8_t ledON;
+
+// extern of WLoopCAN timer ISR
+extern void WLoopCAN_timer_isr(TIM_HandleTypeDef* htim);
 
 void set_led_intensity(uint8_t colour, float intensity); 
 void start_timers(void); 
 void init_can(void);
 void setLEDColour(float R, float G, float B);
+void checkArmed(StateID stateEvent, uint8_t BMS_ACK);
 void waitForAck(StateID stateEvent);
 
 StateID stateMachine(StateID stateEvent);

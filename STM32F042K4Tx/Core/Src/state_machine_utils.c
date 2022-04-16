@@ -7,8 +7,8 @@ float green;
 float blue; 
 
 // global blink variables
-int blink;
-int ledON;
+uint8_t blink;
+uint8_t ledON;
 
 /* 
  * Purpose: Set a specific RGB LED's intensity through PWM channel register
@@ -20,12 +20,15 @@ int ledON;
 void set_led_intensity(uint8_t colour, float intensity) {
     uint32_t ccr_val = (uint32_t)( ((100 - intensity)*ARR_VAL)/100 );
     switch (colour) {
-        case 1:
-            htim3.Instance->CCR1 = ccr_val;
-        case 2:
-            htim3.Instance->CCR2 = ccr_val;
-        case 3:
-            htim3.Instance->CCR3 = ccr_val;
+      case 1:
+        htim3.Instance->CCR1 = ccr_val;
+        break;
+      case 2:
+        htim3.Instance->CCR2 = ccr_val;
+        break;
+      case 3:
+        htim3.Instance->CCR3 = ccr_val;
+        break;
     }
 }
 
@@ -81,10 +84,34 @@ void init_can() {
  *
  */
 void setLEDColour(float R, float G, float B) {
-
     set_led_intensity(RED, R);
     set_led_intensity(GREEN, G);
     set_led_intensity(BLUE, B);
+}
+
+
+/* 
+ * Purpose: Subroutine that checks if state request is ARMED, whether 
+ * the BMS has acknowledged the request, and changes the pod LED colours accordingly.
+ * 
+ * Input: StateID, BMS_ACK
+ * 
+ */ 
+void checkArmed(StateID stateEvent, uint8_t BMS_ACK) {
+  // if stateEvent is ARMED and BMS ack received, set LED colour to ARMED
+  if(stateEvent == ARMED && BMS_ACK) {
+    // "idle", blinking yellow
+    red = 50.0;
+    green = 50.0;
+    blue = 0.0;
+    blink = 1;
+  } else if(stateEvent == ARMED) { 
+    // set LED to white if ARMED state not acked yet by BMS 
+    red = 50.0;
+    green = 50.0;
+    blue = 50.0;
+    blink = 0;
+  }
 }
 
 /* 
@@ -95,11 +122,11 @@ void setLEDColour(float R, float G, float B) {
  * 
  */ 
 void waitForAck(StateID stateEvent) {
-  int BMS_ACK = 0;
-  int MC_ACK = 0;
+  uint8_t BMS_ACK = 0;
+  uint8_t MC_ACK = 0;
 
   // busy wait for acknowledgements from MC and BMS 
-  while(!BMS_ACK && !MC_ACK) {
+  while(!(BMS_ACK && MC_ACK)) {
     // if a msg is received
     if(!Queue_empty(&RX_QUEUE)) {
       CANFrame ackFrame = CANBus_get_frame(); 
@@ -126,8 +153,8 @@ void waitForAck(StateID stateEvent) {
         } 
       }
 
-      // what about receiving a NACK?
-        // wait until receiving an ACK
+      // update LED colours if BMS has acknowledged ARMED state
+      checkArmed(stateEvent, BMS_ACK);
     }
   }
 }
@@ -146,21 +173,18 @@ StateID stateMachine(StateID stateEvent) {
     if(!Queue_empty(&RX_QUEUE)) {
       CANFrame rxFrame = CANBus_get_frame();
 
+      // new CAN message is a state change req
       if(rxFrame.id == 0) {
         stateEvent = CANFrame_get_field(&rxFrame, STATE_ID); 
-      }
 
-      if(stateEvent == ARMED) {
-        // set LED to white if not acked yet by BMS 
-        red = 50.0;
-        green = 50.0;
-        blue = 50.0;
-        blink = 0;
-      }
+        // update LED to precharging colours if state change req is ARMED 
+        // but not yet acked by BMS
+        checkArmed(stateEvent, 0);
 
-      // wait for MC and BMS to ack if not failure state
-      if(stateEvent != SYSTEM_FAILURE) {
-        waitForAck(stateEvent);
+        // wait for MC and BMS to ack if not failure state
+        if(stateEvent != SYSTEM_FAILURE) {
+          waitForAck(stateEvent);
+        }
       }
     }
 
@@ -173,7 +197,7 @@ StateID stateMachine(StateID stateEvent) {
       green = 50.0;
       blue = 0.0;
       blink = 0;
-    break; 
+      break; 
     case LV_READY:
     case ARMED: 
     case MANUAL_OPERATION_WAITING: 
@@ -183,7 +207,7 @@ StateID stateMachine(StateID stateEvent) {
       blue = 0.0;
       blink = 1;
       // set PWM to blinking 
-    break;
+      break;
     case BRAKING: 
     case EMERGENCY_BRAKE:
     case DECELERATING:
@@ -193,7 +217,7 @@ StateID stateMachine(StateID stateEvent) {
       blue = 0.0;
       blink = 1; 
       // set PWM to blinking 
-    break;
+      break;
     case AUTO_PILOT:
     case ACCELERATING:
     case AT_SPEED:
@@ -202,7 +226,7 @@ StateID stateMachine(StateID stateEvent) {
       green = 50.0;
       blue = 0.0;
       blink = 0;
-    break;
+      break;
     case SYSTEM_FAILURE: 
       // "severe danger fault", flashing red
       red = 50.0;
@@ -210,14 +234,14 @@ StateID stateMachine(StateID stateEvent) {
       blue = 0.0;
       blink = 1;
       // set PWM to blinking
-    break;
+      break;
     default:
       // "initialize/normal danger fault", solid red?
       red = 50.0;
       green = 0.0;
       blue = 0.0;
       blink = 0;
-    break;
+      break;
     }
 
     return stateEvent;
